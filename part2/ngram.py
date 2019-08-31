@@ -4,6 +4,9 @@ import sys
 import codecs
 
 N_GRAM = 3
+PREFIX = '<s> '
+SUFFIX = ' </s>'
+UNKNOWN = '<unk>'
 
 """
 n - size of n-grams
@@ -14,10 +17,10 @@ returns: tuple of n-1 (word, context)
 
 def get_ngrams(n, text):  # - generator
     text = re.sub(r'[^\w]', ' ', text)
-    prefix = '<s> '
-    suffix = ' </s>'
+    prefix = PREFIX
+    suffix = SUFFIX
     for i in range(n - 2):
-        prefix += prefix
+        prefix += PREFIX
     text.strip()
     text = prefix + text + suffix
     words = text.split()
@@ -91,7 +94,7 @@ def mask_rare(corpus):
             rare_words.add(word)
 
     for word in rare_words:
-        corpus.replace(word, '<unk>')
+        corpus.replace(word, UNKNOWN)
 
     return corpus
 
@@ -101,7 +104,7 @@ class NGramLM:
         self.n = n  # size of n-grams
         self.ngram_counts = {}  # n-grams seen in the training data,
         self.context_counts = {}  # contexts seen in the training data,
-        self.vocabulary = set()  # words seen in the traniing data
+        self.vocabulary = {}  # words seen in the traniing data
 
     """
     updates NGramLM's internal counts
@@ -114,9 +117,10 @@ class NGramLM:
             word_with_context = get_word_with_context(word, context)
             ngram_counter = self.ngram_counts.get(word_with_context, 0)
             context_counter = self.context_counts.get(context, 0)
+            vocabulary_counter = self.vocabulary.get(context, 0)
             self.ngram_counts[word] = ++ngram_counter
             self.context_counts[context] = ++context_counter
-            self.vocabulary.add(word)
+            self.vocabulary[word] = ++vocabulary_counter
 
     """
     returns prob of n-gram (word, context) using internal counters.
@@ -127,8 +131,8 @@ class NGramLM:
         word_with_context = get_word_with_context(word, context)
         ngram_counter = self.ngram_counts.get(word_with_context, 0)
         context_counter = self.context_counts.get(context, 0)
-        if context_counter == 0:
-            return 1 / (len(self.vocabulary) * 1.0)
+        if context_counter == 0 or UNKNOWN in word:
+            return self.vocabulary[UNKNOWN] / (len(self.vocabulary) * 1.0)
         else:
             return ngram_counter / (context_counter * 1.0)
 
