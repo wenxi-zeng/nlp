@@ -4,6 +4,8 @@ import sys
 import codecs
 
 N_GRAM = 3
+PREFIX = '<s> '
+SUFFIX = ' </s>'
 
 """
 	n - size of n-grams
@@ -13,17 +15,20 @@ N_GRAM = 3
 
 
 def get_ngrams(n, text):  # - generator
-	text = re.sub(r'[^\w]', ' ', text)
-	prefix = '<s> '
-	suffix = ' </s>'
+	prefix = PREFIX
+	suffix = SUFFIX
 	for i in range(n - 2):
-		prefix += prefix
-	text.strip()
-	text = prefix + text + suffix
-	words = text.split()
+		prefix += PREFIX
 
-	for i in range(2, len(words)):
-		yield words[i], words[i - 2] + ' ' + words[i - 1]
+	sentences = re.split(r'[?,.!:;]+', text)
+	for sentence in sentences:
+		sentence = re.sub(r'[^\w]', ' ', sentence)
+		sentence.strip()
+		sentence = prefix + sentence + suffix
+		words = sentence.split()
+
+		for i in range(2, len(words)):
+			yield words[i], words[i - 2] + ' ' + words[i - 1]
 
 
 """
@@ -37,10 +42,7 @@ def create_ngramlm(n, corpus_path):
 	ngramlm = NGramLM(N_GRAM)
 	with codecs.open(corpus_path,  'r', 'utf-8') as file:
 		corpus = file.read()
-		sentences = re.split(r'[?,.!:;]+', corpus)
-		for sentence in sentences:
-			# print(sentence)
-			ngramlm.update(sentence)
+		ngramlm.update(corpus)
 
 	return ngramlm
 
@@ -58,7 +60,7 @@ def text_prob(model, text):
 		prob = model.word_prob(word, context)
 		log_prob += math.log(prob)
 
-	return math.exp(log_prob)
+	return log_prob
 
 
 """
@@ -88,8 +90,10 @@ class NGramLM:
 			word_with_context = get_word_with_context(word, context)
 			ngram_counter = self.ngram_counts.get(word_with_context, 0)
 			context_counter = self.context_counts.get(context, 0)
-			self.ngram_counts[word] = ++ngram_counter
-			self.context_counts[context] = ++context_counter
+			ngram_counter += 1
+			context_counter += 1
+			self.ngram_counts[word_with_context] = ngram_counter
+			self.context_counts[context] = context_counter
 			self.vocabulary.add(word)
 
 	"""
@@ -109,7 +113,7 @@ class NGramLM:
 
 def main(argv):
 	model = create_ngramlm(3, r"C:\Users\wenxi\OneDrive\UTD\nlp\hw1\warpeace.txt")
-	#print(text_prob(model, "God has given it to me, let him who touches it beware!"))
+	print(text_prob(model, "God has given it to me, let him who touches it beware!"))
 	print(text_prob(model, "Where is the prince, my Dauphin?"))
 	pass
 
