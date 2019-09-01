@@ -23,7 +23,7 @@ def get_ngrams(n, text):  # - generator
 	sentences = re.split(r'[?,.!:;]+', text)
 	for sentence in sentences:
 		sentence = re.sub(r'[^\w]', ' ', sentence)
-		sentence.strip()
+		sentence = sentence.strip()
 		sentence = prefix + sentence + suffix
 		words = sentence.split()
 
