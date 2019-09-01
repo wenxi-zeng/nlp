@@ -16,17 +16,20 @@ returns: tuple of n-1 (word, context)
 
 
 def get_ngrams(n, text):  # - generator
-    text = re.sub(r'[^\w]', ' ', text)
     prefix = PREFIX
     suffix = SUFFIX
     for i in range(n - 2):
         prefix += PREFIX
-    text.strip()
-    text = prefix + text + suffix
-    words = text.split()
 
-    for i in range(2, len(words)):
-        yield words[i], words[i - 2] + ' ' + words[i - 1]
+    sentences = re.split(r'[?,.!:;]+', text)
+    for sentence in sentences:
+        sentence = re.sub(r'[^\w<>]', ' ', sentence)
+        sentence = sentence.strip()
+        sentence = prefix + sentence + suffix
+        words = sentence.split()
+
+        for i in range(2, len(words)):
+            yield words[i], words[i - 2] + ' ' + words[i - 1]
 
 
 """
@@ -41,10 +44,7 @@ def create_ngramlm(n, corpus_path):
     with codecs.open(corpus_path, 'r', 'utf-8') as file:
         corpus = file.read()
         corpus = mask_rare(corpus)
-        sentences = re.split(r'[?,.!:;]+', corpus)
-        for sentence in sentences:
-            # print(sentence)
-            ngramlm.update(sentence)
+        ngramlm.update(corpus)
 
     return ngramlm
 
@@ -62,7 +62,7 @@ def text_prob(model, text):
         prob = model.word_prob(word, context)
         log_prob += math.log(prob)
 
-    return math.exp(log_prob)
+    return log_prob
 
 
 """
@@ -87,16 +87,25 @@ def mask_rare(corpus):
     words = re.split(r'[^\w]', corpus)
     for word in words:
         count = all_words.get(word, 0)
-        all_words[word] = ++count
+        count += 1
+        all_words[word] = count
 
     for word, count in all_words.items():
         if count == 1:
             rare_words.add(word)
+    print("all: ", len(all_words), ", rare: ", len(rare_words))
 
-    for word in rare_words:
-        corpus.replace(word, UNKNOWN)
+    masked_corpus = []
+    sentences = corpus.split()
+    for sentence in sentences:
+        words = re.split(r'[^\w]', sentence)
+        for word in words:
+            if word in rare_words:
+                sentence = sentence.replace(word, UNKNOWN)
+        masked_corpus.append(sentence)
+        masked_corpus.append(' ')
 
-    return corpus
+    return ''.join(masked_corpus).strip()
 
 
 class NGramLM:
@@ -117,10 +126,15 @@ class NGramLM:
             word_with_context = get_word_with_context(word, context)
             ngram_counter = self.ngram_counts.get(word_with_context, 0)
             context_counter = self.context_counts.get(context, 0)
-            vocabulary_counter = self.vocabulary.get(context, 0)
-            self.ngram_counts[word] = ++ngram_counter
-            self.context_counts[context] = ++context_counter
-            self.vocabulary[word] = ++vocabulary_counter
+            vocabulary_counter = self.vocabulary.get(word, 0)
+            ngram_counter += 1
+            context_counter += 1
+            vocabulary_counter += 1
+            self.ngram_counts[word_with_context] = ngram_counter
+            self.context_counts[context] = context_counter
+            self.vocabulary[word] = vocabulary_counter
+
+        print(self.vocabulary[UNKNOWN])
 
     """
     returns prob of n-gram (word, context) using internal counters.
@@ -131,7 +145,7 @@ class NGramLM:
         word_with_context = get_word_with_context(word, context)
         ngram_counter = self.ngram_counts.get(word_with_context, 0)
         context_counter = self.context_counts.get(context, 0)
-        if context_counter == 0 or UNKNOWN in word:
+        if context_counter == 0 or word not in self.vocabulary:
             return self.vocabulary[UNKNOWN] / (len(self.vocabulary) * 1.0)
         else:
             return ngram_counter / (context_counter * 1.0)
