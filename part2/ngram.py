@@ -3,7 +3,6 @@ import math
 import sys
 import codecs
 
-N_GRAM = 3
 PREFIX = '<s> '
 SUFFIX = ' </s>'
 UNKNOWN = '<unk>'
@@ -28,8 +27,11 @@ def get_ngrams(n, text):  # - generator
         sentence = prefix + sentence + suffix
         words = sentence.split()
 
-        for i in range(2, len(words)):
-            yield words[i], words[i - 2] + ' ' + words[i - 1]
+        for i in range(n - 1, len(words)):
+            context = ''
+            for j in (1, n - 1):
+                context = words[i - j] + ' ' + context
+            yield words[i], context
 
 
 """
@@ -40,13 +42,30 @@ returns: NGramLM trained model
 
 
 def create_ngramlm(n, corpus_path):
-    ngramlm = NGramLM(N_GRAM)
+    ngramlm = NGramLM(n)
     with codecs.open(corpus_path, 'r', 'utf-8') as file:
         corpus = file.read()
         corpus = mask_rare(corpus)
         ngramlm.update(corpus)
 
     return ngramlm
+
+
+"""
+n - number of grams
+corpus path - file path
+returns: NGramLM trained model
+"""
+
+
+def create_interpolator(n, lambdas, corpus_path):
+    inter = NGramInterpolator(n, lambdas)
+    with codecs.open(corpus_path, 'r', 'utf-8') as file:
+        corpus = file.read()
+        corpus = mask_rare(corpus)
+        inter.update(corpus)
+
+    return inter
 
 
 """
@@ -57,7 +76,7 @@ under NGramLM trained model
 
 def text_prob(model, text, delta=.0):
     log_prob = 0
-    ngrams = get_ngrams(N_GRAM, text)
+    ngrams = get_ngrams(model.n, text)
     for word, context in ngrams:
         prob = model.word_prob(word, context, delta)
         log_prob += math.log(prob)
@@ -134,7 +153,7 @@ class NGramLM:
             self.context_counts[context] = context_counter
             self.vocabulary[word] = vocabulary_counter
 
-        print(self.vocabulary[UNKNOWN])
+        # print(self.vocabulary[UNKNOWN])
 
     """
     returns prob of n-gram (word, context) using internal counters.
@@ -167,6 +186,52 @@ class NGramLM:
         return (ngram_counter + delta) / ((context_counter + delta * len(self.vocabulary)) * 1.0)
 
 
+"""
+	linear interpolation.
+"""
+
+class NGramInterpolator:
+
+
+    """
+        n - size of the largest n-gram
+        lambdas - a list of length n containing the interpolation factors
+            (floats) in descending order of n-gram size.
+
+        save n and lambdas
+        initialize n internal NGramLMs, one for each n-gram size
+    """
+
+    def __init__(self, n, lambdas):
+        self.n = n
+        self.lambdas = lambdas
+        self.models = []
+        for i in range(n):
+            self.models.append(NGramLM(n - i))
+
+
+    """
+        update all of the internal NGramLMs
+    """
+
+    def update(self, text):
+        for model in self.models:
+            model.update(text)
+
+
+    """
+        returns the linearly interpolated prob using lambdas
+        and prob given by NGramLMs
+    """
+
+    def word_prob(self, word, context, delta=0):
+        prob = 0
+        for i in range(self.n):
+            prob += self.lambdas[i] * self.models[i].word_prob(word, context, delta)
+
+        return prob
+
+
 def main(argv):
     model = create_ngramlm(3, r"C:\Users\wenxi\OneDrive\UTD\nlp\hw1\warpeace.txt")
     # print(text_prob(model, "God has given it to me, let him who touches it beware!"))
@@ -174,6 +239,13 @@ def main(argv):
     print(text_prob(model, "Where is the prince, my Dauphin?", 0.5))
     print(text_prob(model, "Where is the prince, my Dauphin?", 0.25))
     print(text_prob(model, "Where is the prince, my Dauphin?"))
+
+    inter = create_interpolator(3, [0.33, 0.33, 0.33], r"C:\Users\wenxi\OneDrive\UTD\nlp\hw1\warpeace.txt")
+    # print(text_prob(model, "God has given it to me, let him who touches it beware!"))
+    print(text_prob(inter, "Where is the prince, my Dauphin?", 1))
+    print(text_prob(inter, "Where is the prince, my Dauphin?", 0.5))
+    print(text_prob(inter, "Where is the prince, my Dauphin?", 0.25))
+    print(text_prob(inter, "Where is the prince, my Dauphin?"))
     pass
 
 
