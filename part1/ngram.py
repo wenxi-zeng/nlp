@@ -27,8 +27,11 @@ def get_ngrams(n, text):  # - generator
 		sentence = prefix + sentence + suffix
 		words = sentence.split()
 
-		for i in range(2, len(words)):
-			yield words[i], words[i - 2] + ' ' + words[i - 1]
+		for i in range(n - 1, len(words)):
+			context = ''
+			for j in (1, n - 1):
+				context = words[i - j] + ' ' + context
+			yield words[i], context
 
 
 """
