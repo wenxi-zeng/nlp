@@ -55,11 +55,11 @@ under NGramLM trained model
 """
 
 
-def text_prob(model, text):
+def text_prob(model, text, delta=.0):
     log_prob = 0
     ngrams = get_ngrams(N_GRAM, text)
     for word, context in ngrams:
-        prob = model.word_prob(word, context)
+        prob = model.word_prob(word, context, delta)
         log_prob += math.log(prob)
 
     return log_prob
@@ -141,7 +141,7 @@ class NGramLM:
     If context is previously unseen, returns 1/|V|, V is vocabulary model
     """
 
-    def word_prob(self, word, context):
+    def word_prob_delta_zero(self, word, context):
         word_with_context = get_word_with_context(word, context)
         ngram_counter = self.ngram_counts.get(word_with_context, 0)
         context_counter = self.context_counts.get(context, 0)
@@ -151,9 +151,28 @@ class NGramLM:
             return ngram_counter / (context_counter * 1.0)
 
 
+    """
+    prob with smoothing
+    returns: Laplace-smoothed probabilities 
+    (need to modify to fit n-gram)
+    """
+
+    def word_prob(self, word, context, delta=.0):
+        if delta == 0:
+            return self.word_prob_delta_zero(word, context)
+
+        word_with_context = get_word_with_context(word, context)
+        ngram_counter = self.ngram_counts.get(word_with_context, 0)
+        context_counter = self.context_counts.get(context, 0)
+        return (ngram_counter + delta) / ((context_counter + delta * len(self.vocabulary)) * 1.0)
+
+
 def main(argv):
     model = create_ngramlm(3, r"C:\Users\wenxi\OneDrive\UTD\nlp\hw1\warpeace.txt")
     # print(text_prob(model, "God has given it to me, let him who touches it beware!"))
+    print(text_prob(model, "Where is the prince, my Dauphin?", 1))
+    print(text_prob(model, "Where is the prince, my Dauphin?", 0.5))
+    print(text_prob(model, "Where is the prince, my Dauphin?", 0.25))
     print(text_prob(model, "Where is the prince, my Dauphin?"))
     pass
 
