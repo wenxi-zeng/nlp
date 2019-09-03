@@ -41,8 +41,8 @@ returns: NGramLM trained model
 """
 
 
-def create_ngramlm(n, corpus_path):
-    ngramlm = NGramLM(n)
+def create_ngramlm(n, corpus_path, delta=.0):
+    ngramlm = NGramLM(n, delta)
     with codecs.open(corpus_path, 'r', 'utf-8') as file:
         corpus = file.read()
         corpus = mask_rare(corpus)
@@ -127,13 +127,35 @@ def mask_rare(corpus):
     return ''.join(masked_corpus).strip()
 
 
+"""
+model - trained model
+corpus_path - test data file path, no need to mask rare words
+returns perplexity of a trained model
+counts N, total tokens
+"""
+
+
+def perplexity(model, corpus_path):
+    with codecs.open(corpus_path, 'r', 'utf-8') as file:
+        corpus = file.read()
+        num_tokens = 0
+
+        sentences = re.split(r'[?,.!:;]+', corpus)
+        for sentence in sentences:
+            words = re.split(r'[^\w]', sentence)
+            num_tokens += len(words)
+
+        i = text_prob(model, corpus, model.delta) / num_tokens
+        return 2 ** -i
+
 
 class NGramLM:
-    def __init__(self, n):
+    def __init__(self, n, delta=.0):
         self.n = n  # size of n-grams
         self.ngram_counts = {}  # n-grams seen in the training data,
         self.context_counts = {}  # contexts seen in the training data,
         self.vocabulary = {}  # words seen in the traniing data
+        self.delta = delta
 
     """
     updates NGramLM's internal counts
@@ -234,19 +256,15 @@ class NGramInterpolator:
 
 
 def main(argv):
-    model = create_ngramlm(3, r"C:\Users\wenxi\OneDrive\UTD\nlp\hw1\warpeace.txt")
-    # print(text_prob(model, "God has given it to me, let him who touches it beware!"))
-    print(text_prob(model, "Where is the prince, my Dauphin?", 1))
-    print(text_prob(model, "Where is the prince, my Dauphin?", 0.5))
-    print(text_prob(model, "Where is the prince, my Dauphin?", 0.25))
-    print(text_prob(model, "Where is the prince, my Dauphin?"))
+    model_smoothed_shakespeare = create_ngramlm(3, r"C:\Users\wenxi\OneDrive\UTD\nlp\hw1\shakespeare.txt", 0.5)
+    model_shakespeare = create_ngramlm(3, r"C:\Users\wenxi\OneDrive\UTD\nlp\hw1\shakespeare.txt")
+    print(perplexity(model_smoothed_shakespeare, r"C:\Users\wenxi\OneDrive\UTD\nlp\hw1\sonnets.txt"))
+    print(perplexity(model_shakespeare, r"C:\Users\wenxi\OneDrive\UTD\nlp\hw1\sonnets.txt"))
 
-    inter = create_interpolator(3, [0.33, 0.33, 0.33], r"C:\Users\wenxi\OneDrive\UTD\nlp\hw1\warpeace.txt")
-    # print(text_prob(model, "God has given it to me, let him who touches it beware!"))
-    print(text_prob(inter, "Where is the prince, my Dauphin?", 1))
-    print(text_prob(inter, "Where is the prince, my Dauphin?", 0.5))
-    print(text_prob(inter, "Where is the prince, my Dauphin?", 0.25))
-    print(text_prob(inter, "Where is the prince, my Dauphin?"))
+    model_smoothed_warpeace = create_ngramlm(3, r"C:\Users\wenxi\OneDrive\UTD\nlp\hw1\warpeace.txt", 0.5)
+    print(perplexity(model_smoothed_warpeace, r"C:\Users\wenxi\OneDrive\UTD\nlp\hw1\sonnets.txt"))
+    print(perplexity(model_smoothed_shakespeare, r"C:\Users\wenxi\OneDrive\UTD\nlp\hw1\sonnets.txt"))
+
     pass
 
 
