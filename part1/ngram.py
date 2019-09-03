@@ -29,9 +29,9 @@ def get_ngrams(n, text):  # - generator
 
 		for i in range(n - 1, len(words)):
 			context = ''
-			for j in (1, n - 1):
-				context = words[i - j] + ' ' + context
-			yield words[i], context
+			for j in range(i - n + 1, i):
+				context = context + ' ' + words[j].strip()
+			yield words[i].strip(), context.strip()
 
 
 """
