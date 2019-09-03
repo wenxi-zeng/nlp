@@ -90,7 +90,7 @@ concatenate word with context
 
 
 def get_word_with_context(word, context):
-    return context + ' ' + word
+    return context.strip() + ' ' + word.strip()
 
 
 """

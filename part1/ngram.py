@@ -72,7 +72,7 @@ def text_prob(model, text):
 
 
 def get_word_with_context(word, context):
-	return context + ' ' + word
+    return context.strip() + ' ' + word.strip()
 
 
 class NGramLM:
