@@ -2,6 +2,7 @@ import re
 import math
 import sys
 import codecs
+import random
 
 PREFIX = '<s> '
 SUFFIX = ' </s>'
@@ -30,8 +31,8 @@ def get_ngrams(n, text):  # - generator
         for i in range(n - 1, len(words)):
             context = ''
             for j in (1, n - 1):
-                context = words[i - j] + ' ' + context
-            yield words[i], context
+                context = words[i - j].strip() + ' ' + context
+            yield words[i].strip(), context.strip()
 
 
 """
@@ -45,7 +46,7 @@ def create_ngramlm(n, corpus_path, delta=.0):
     ngramlm = NGramLM(n, delta)
     with codecs.open(corpus_path, 'r', 'utf-8') as file:
         corpus = file.read()
-        corpus = mask_rare(corpus)
+        # corpus = mask_rare(corpus)
         ngramlm.update(corpus)
 
     return ngramlm
@@ -90,7 +91,7 @@ concatenate word with context
 
 
 def get_word_with_context(word, context):
-    return context + ' ' + word
+    return context.strip() + ' ' + word.strip()
 
 
 """
@@ -138,11 +139,33 @@ counts N, total tokens
 def perplexity(model, corpus_path):
     with codecs.open(corpus_path, 'r', 'utf-8') as file:
         corpus = file.read()
-        test_set_model = create_ngramlm(1, corpus_path)     # create an unigram model
-        num_tokens = len(test_set_model.vocabulary)         # use the unigram model to get N
-        prob = text_prob(model, corpus, model.delta) / num_tokens
+        num_tokens = 0
 
-        return prob
+        sentences = re.split(r'[?,.!:;]+', corpus)
+        for sentence in sentences:
+            words = re.split(r'[^\w]', sentence)
+            num_tokens += len(words)
+
+        i = text_prob(model, corpus, model.delta) / num_tokens
+        return 2 ** -i
+
+
+def random_text(model, max_length, delta=0):
+    context = []
+    suffix = SUFFIX.strip()
+    for i in range(model.n - 1):
+        context.append(PREFIX.strip())
+    counter = 0
+    sentence = ''
+
+    while True:
+        word = model.random_word(' '.join(context).strip(), delta)
+        sentence = sentence + ' ' + word
+        context[0] = context[1]
+        context[1] = word
+        counter += 1
+        if word == suffix or counter > max_length:
+            return sentence.strip()
 
 
 class NGramLM:
@@ -205,6 +228,32 @@ class NGramLM:
         return (ngram_counter + delta) / ((context_counter + delta * len(self.vocabulary)) * 1.0)
 
 
+    """
+    returns a word sampled from the model's 
+    probability distribution for context
+    """
+
+    def random_word(self, context, delta=0):
+        vocabulary = list(self.vocabulary.keys())
+        vocabulary = sorted(vocabulary)
+
+        distrib = []
+        total_counts = 0
+        for word in vocabulary:
+            word_with_context = get_word_with_context(word, context)
+            count = self.ngram_counts.get(word_with_context, 0)
+            total_counts += count
+            distrib.append(total_counts)
+
+        r = random.random()
+        for i in range(len(distrib)):
+            distrib[i] = distrib[i] / (total_counts * 1.0)
+            if r < distrib[i]:
+                return vocabulary[i]
+
+        return vocabulary[len(vocabulary) - 1]
+
+
 """
 	linear interpolation.
 """
@@ -252,14 +301,13 @@ class NGramInterpolator:
 
 
 def main(argv):
-    model_smoothed_warpeace = create_ngramlm(3, r"C:\Users\wenxi\OneDrive\UTD\nlp\hw1\warpeace.txt", 0.5)
-    # model_warpeace = create_ngramlm(3, r"C:\Users\wenxi\OneDrive\UTD\nlp\hw1\warpeace.txt")
-    # print(perplexity(model_smoothed_warpeace, r"C:\Users\wenxi\OneDrive\UTD\nlp\hw1\shakespeare.txt"))
-    # print(perplexity(model_warpeace, r"C:\Users\wenxi\OneDrive\UTD\nlp\hw1\shakespeare.txt"))
-
-    model_smoothed_shakespeare = create_ngramlm(3, r"C:\Users\wenxi\OneDrive\UTD\nlp\hw1\shakespeare.txt", 0.5)
-    print(perplexity(model_smoothed_warpeace, r"C:\Users\wenxi\OneDrive\UTD\nlp\hw1\sonnets.txt"))
-    print(perplexity(model_smoothed_shakespeare, r"C:\Users\wenxi\OneDrive\UTD\nlp\hw1\sonnets.txt"))
+    random.seed(1)
+    model = create_ngramlm(3, r"C:\Users\wenxi\OneDrive\UTD\nlp\hw1\shakespeare.txt")
+    print(random_text(model, 10))
+    print(random_text(model, 10))
+    print(random_text(model, 10))
+    print(random_text(model, 10))
+    print(random_text(model, 10))
 
     pass
 
