@@ -161,8 +161,11 @@ def random_text(model, max_length, delta=0):
     while True:
         word = model.random_word(' '.join(context).strip(), delta)
         sentence = sentence + ' ' + word
-        context[0] = context[1]
-        context[1] = word
+
+        for i in range(len(context) - 1):
+            context[i] = context[i + 1]
+        context[len(context) - 1] = word
+
         counter += 1
         if word == suffix or counter > max_length:
             return sentence.strip()
