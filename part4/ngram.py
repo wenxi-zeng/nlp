@@ -30,8 +30,8 @@ def get_ngrams(n, text):  # - generator
 
         for i in range(n - 1, len(words)):
             context = ''
-            for j in (1, n - 1):
-                context = words[i - j].strip() + ' ' + context
+            for j in range(i - n + 1, i):
+                context = context + ' ' + words[j].strip()
             yield words[i].strip(), context.strip()
 
 
@@ -160,15 +160,45 @@ def random_text(model, max_length, delta=0):
 
     while True:
         word = model.random_word(' '.join(context).strip(), delta)
+        if word == suffix:
+            return sentence.strip()
+
         sentence = sentence + ' ' + word
+        counter += 1
+        if word == suffix or counter > max_length:
+            return sentence.strip()
 
         for i in range(len(context) - 1):
             context[i] = context[i + 1]
         context[len(context) - 1] = word
 
+
+"""
+almost identical to random_text
+"""
+
+
+def likeliest_text(model, max_length, delta = 0):
+    context = []
+    suffix = SUFFIX.strip()
+    for i in range(model.n - 1):
+        context.append(PREFIX.strip())
+    counter = 0
+    sentence = ''
+
+    while True:
+        word = model.likeliest_word(' '.join(context).strip(), delta)
+        if word == suffix:
+            return sentence.strip()
+
+        sentence = sentence + ' ' + word
         counter += 1
         if word == suffix or counter > max_length:
             return sentence.strip()
+
+        for i in range(len(context) - 1):
+            context[i] = context[i + 1]
+        context[len(context) - 1] = word
 
 
 class NGramLM:
@@ -257,6 +287,28 @@ class NGramLM:
         return vocabulary[len(vocabulary) - 1]
 
 
+    """
+        returns n-gram with the highest prob for context
+    """
+
+    def likeliest_word(self, context, delta=0):
+        vocabulary = list(self.vocabulary.keys())
+
+        distrib = []
+        for word in vocabulary:
+            word_with_context = get_word_with_context(word, context)
+            count = self.ngram_counts.get(word_with_context, 0)
+            distrib.append(count)
+
+        max = 0
+        maxIndex = 0
+        for i in range(len(distrib)):
+            if max < distrib[i]:
+                max = distrib[i]
+                maxIndex = i
+
+        return vocabulary[maxIndex]
+
 """
 	linear interpolation.
 """
@@ -311,6 +363,15 @@ def main(argv):
     print(random_text(model, 10))
     print(random_text(model, 10))
     print(random_text(model, 10))
+
+    bimodel = create_ngramlm(2, r"C:\Users\wenxi\OneDrive\UTD\nlp\hw1\shakespeare.txt")
+    print(likeliest_text(bimodel, 10))
+    trimodel = create_ngramlm(3, r"C:\Users\wenxi\OneDrive\UTD\nlp\hw1\shakespeare.txt")
+    print(likeliest_text(trimodel, 10))
+    quadmodel = create_ngramlm(4, r"C:\Users\wenxi\OneDrive\UTD\nlp\hw1\shakespeare.txt")
+    print(likeliest_text(quadmodel, 10))
+    pentamodel = create_ngramlm(5, r"C:\Users\wenxi\OneDrive\UTD\nlp\hw1\shakespeare.txt")
+    print(likeliest_text(pentamodel, 10))
 
     pass
 
