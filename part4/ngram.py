@@ -357,20 +357,20 @@ class NGramInterpolator:
 
 def main(argv):
     random.seed(1)
-    model = create_ngramlm(3, r"C:\Users\wenxi\OneDrive\UTD\nlp\hw1\shakespeare.txt")
+    model = create_ngramlm(3, "shakespeare.txt")
     print(random_text(model, 10))
     print(random_text(model, 10))
     print(random_text(model, 10))
     print(random_text(model, 10))
     print(random_text(model, 10))
 
-    bimodel = create_ngramlm(2, r"C:\Users\wenxi\OneDrive\UTD\nlp\hw1\shakespeare.txt")
+    bimodel = create_ngramlm(2, "shakespeare.txt")
     print(likeliest_text(bimodel, 10))
-    trimodel = create_ngramlm(3, r"C:\Users\wenxi\OneDrive\UTD\nlp\hw1\shakespeare.txt")
+    trimodel = create_ngramlm(3, "shakespeare.txt")
     print(likeliest_text(trimodel, 10))
-    quadmodel = create_ngramlm(4, r"C:\Users\wenxi\OneDrive\UTD\nlp\hw1\shakespeare.txt")
+    quadmodel = create_ngramlm(4, "shakespeare.txt")
     print(likeliest_text(quadmodel, 10))
-    pentamodel = create_ngramlm(5, r"C:\Users\wenxi\OneDrive\UTD\nlp\hw1\shakespeare.txt")
+    pentamodel = create_ngramlm(5, "shakespeare.txt")
     print(likeliest_text(pentamodel, 10))
 
     pass

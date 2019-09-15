@@ -112,7 +112,6 @@ def mask_rare(corpus):
     for word, count in all_words.items():
         if count == 1:
             rare_words.add(word)
-    print("all: ", len(all_words), ", rare: ", len(rare_words))
 
     masked_corpus = []
     sentences = corpus.split()
@@ -256,14 +255,24 @@ class NGramInterpolator:
 
 
 def main(argv):
-    model_smoothed_shakespeare = create_ngramlm(3, r"C:\Users\wenxi\OneDrive\UTD\nlp\hw1\shakespeare.txt", 0.5)
-    model_shakespeare = create_ngramlm(3, r"C:\Users\wenxi\OneDrive\UTD\nlp\hw1\shakespeare.txt")
-    print(perplexity(model_smoothed_shakespeare, r"C:\Users\wenxi\OneDrive\UTD\nlp\hw1\sonnets.txt"))
-    print(perplexity(model_shakespeare, r"C:\Users\wenxi\OneDrive\UTD\nlp\hw1\sonnets.txt"))
+    model_smoothed_shakespeare = create_ngramlm(3, "shakespeare.txt", 0.5)
+    model_shakespeare = create_ngramlm(3, "shakespeare.txt")
 
-    model_smoothed_warpeace = create_ngramlm(3, r"C:\Users\wenxi\OneDrive\UTD\nlp\hw1\warpeace.txt", 0.5)
-    print(perplexity(model_smoothed_warpeace, r"C:\Users\wenxi\OneDrive\UTD\nlp\hw1\sonnets.txt"))
-    print(perplexity(model_smoothed_shakespeare, r"C:\Users\wenxi\OneDrive\UTD\nlp\hw1\sonnets.txt"))
+    print("perplexity:", perplexity(model_smoothed_shakespeare, "sonnets.txt"), "smoothed model",  "corpus: shakespeare.txt",
+          "test set: sonnets.txt")
+    try:
+        print("perplexity:", perplexity(model_shakespeare, "sonnets.txt"), "non-smoothed model",  "corpus: shakespeare.txt",
+            "test set: sonnets.txt")
+    except ValueError:
+        print("ValueError: math domain error", "non-smoothed model",  "corpus: shakespeare.txt",
+            "test set: sonnets.txt")
+
+    model_smoothed_warpeace = create_ngramlm(3, "warpeace.txt", 0.5)
+
+    print("perplexity:", perplexity(model_smoothed_warpeace, "sonnets.txt"), "smoothed model",  "corpus: warpeace.txt",
+          "test set: sonnets.txt")
+    print("perplexity:", perplexity(model_smoothed_shakespeare, "sonnets.txt"), "smoothed model",  "corpus: shakespeare.txt",
+          "test set: sonnets.txt")
 
     pass
 

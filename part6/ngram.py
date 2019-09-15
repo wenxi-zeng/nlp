@@ -3,6 +3,8 @@ import math
 import sys
 import codecs
 import random
+from collections import OrderedDict
+import queue
 
 PREFIX = '<s> '
 SUFFIX = ' </s>'
@@ -165,7 +167,7 @@ def random_text(model, max_length, delta=0):
 
         sentence = sentence + ' ' + word
         counter += 1
-        if word == suffix or counter > max_length:
+        if counter > max_length:
             return sentence.strip()
 
         for i in range(len(context) - 1):
@@ -178,7 +180,7 @@ almost identical to random_text
 """
 
 
-def likeliest_text(model, max_length, delta = 0):
+def likeliest_text(model, max_length, delta=0):
     context = []
     suffix = SUFFIX.strip()
     for i in range(model.n - 1):
@@ -193,12 +195,77 @@ def likeliest_text(model, max_length, delta = 0):
 
         sentence = sentence + ' ' + word
         counter += 1
-        if word == suffix or counter > max_length:
+        if counter > max_length:
             return sentence.strip()
 
         for i in range(len(context) - 1):
             context[i] = context[i + 1]
         context[len(context) - 1] = word
+
+
+def beam_search_text(model, max_length, k, delta=.0):
+    # here we first build the first candidate '<s> <s>'
+    starter = []
+    best_k = []
+    suffix = SUFFIX.strip()
+    for i in range(model.n - 1):
+        starter.append(PREFIX.strip())
+    init_candidate = Candidate(' '.join(starter).strip(), 1)  # check the 'Candidate' class below
+
+    # put the first candidate into queue and make it as the current best_k
+    frontier = queue.Queue()
+    best_k.append(init_candidate)
+    frontier.put(init_candidate)
+
+    # loop until we got the max_length of words
+    for i in range(max_length):
+        # use sub_k to store the next level best k words followed by the current best_k words
+        # sub_k is reset at each level, i.e. for different i
+        sub_k = []
+        while not frontier.empty():
+            # poll a text from the queue
+            # if the last word of the text is suffix <\s>, skip it
+            candidate = frontier.get()
+            words = candidate.text.split()
+            if words[len(words) - 1] == suffix:
+                continue
+
+            # use the last n words to build context
+            # get the next k_words of the context
+            # append each of the k_words to current text, which yields k new texts
+            # remove the current text from best_k, since we already find its descendants
+            context = words[len(words) - model.n + 1: len(words)]
+            k_words = model.beam_search_word(' '.join(context).strip(), k, delta)
+            sub_k = sub_k + get_new_candidates(model, candidate, k_words, delta)
+            best_k.remove(candidate)
+
+        # merge all the elements of best_k and sub_k to elect new best_k
+        # put the new best_k texts to queue, to find their descendants
+        best_k = merge(best_k, sub_k, k)
+        for candidate in best_k:
+            frontier.put(candidate)
+
+    return best_k
+
+
+def get_new_candidates(model, candidate, sub_k, delta=.0):
+    # append each of the sub_k to current text,
+    # returns candidate's k descendants
+    new_candidates = []
+    for item in sub_k:
+        new_candidate = candidate.clone()
+        new_candidate.append(item)
+        new_candidate.prob = text_prob(model, new_candidate.text, delta)
+        new_candidates.append(new_candidate)
+
+    return new_candidates
+
+
+def merge(best_k, sub_k, k):
+    # elect new best_k
+    temp = best_k + sub_k
+    temp = sorted(temp, key=lambda x: x.prob, reverse=True)
+    return temp[:k]
 
 
 class NGramLM:
@@ -300,14 +367,41 @@ class NGramLM:
             count = self.ngram_counts.get(word_with_context, 0)
             distrib.append(count)
 
-        max = 0
-        maxIndex = 0
+        max_value = 0
+        max_Index = 0
         for i in range(len(distrib)):
-            if max < distrib[i]:
-                max = distrib[i]
-                maxIndex = i
+            if max_value < distrib[i]:
+                max_value = distrib[i]
+                max_Index = i
 
-        return vocabulary[maxIndex]
+        return vocabulary[max_Index]
+
+
+    """
+        return the best k words of the given context
+    """
+
+    def beam_search_word(self, context, k, delta=.0):
+        distrib = {}
+        best_k = []
+
+        # this loop loads every possible word following the given context with its counts into distrib{}
+        for word, _ in self.vocabulary.items():
+            distrib[word] = self.word_prob(word, context, delta)
+
+        # rank the probabilities in the order of high to low
+        ordered_distrib = OrderedDict(sorted(distrib.items(), key=lambda kv: kv[1], reverse=True))
+
+        # this loop loads the top ranked k words into best_k
+        i = 0
+        for word, prob in ordered_distrib.items():
+            if i >= k:
+                break
+            best_k.append(Candidate(word, prob))
+            i += 1
+
+        return best_k
+
 
 """
 	linear interpolation.
@@ -355,23 +449,43 @@ class NGramInterpolator:
         return prob
 
 
-def main(argv):
-    random.seed(1)
-    model = create_ngramlm(3, r"C:\Users\wenxi\OneDrive\UTD\nlp\hw1\shakespeare.txt")
-    print(random_text(model, 10))
-    print(random_text(model, 10))
-    print(random_text(model, 10))
-    print(random_text(model, 10))
-    print(random_text(model, 10))
+class Candidate:
 
-    bimodel = create_ngramlm(2, r"C:\Users\wenxi\OneDrive\UTD\nlp\hw1\shakespeare.txt")
-    print(likeliest_text(bimodel, 10))
-    trimodel = create_ngramlm(3, r"C:\Users\wenxi\OneDrive\UTD\nlp\hw1\shakespeare.txt")
-    print(likeliest_text(trimodel, 10))
-    quadmodel = create_ngramlm(4, r"C:\Users\wenxi\OneDrive\UTD\nlp\hw1\shakespeare.txt")
-    print(likeliest_text(quadmodel, 10))
-    pentamodel = create_ngramlm(5, r"C:\Users\wenxi\OneDrive\UTD\nlp\hw1\shakespeare.txt")
-    print(likeliest_text(pentamodel, 10))
+    """
+        This class is just for convenience,
+        avoid to keep return tuple
+    """
+
+    def __init__(self, text, prob):
+        self.text = text
+        self.prob = prob
+
+    def append(self, word, prob):
+        # append a word to text
+        # the prob is overwritten later by text_prob,
+        # since I original design it to be the real probability.
+        # this has the potential of underflow
+        self.text = self.text + ' ' + word.strip()
+        self.prob *= prob
+
+    def append(self, other):
+        # append another candidate to this candidate
+        # text is being appended
+        # the prob is overwritten later by text_prob,
+        # since I original design it to be the real probability.
+        # this has the potential of underflow
+        self.text = self.text + ' ' + other.text.strip()
+        self.prob *= other.prob
+
+    def clone(self):
+        # create a copy of current candidate
+        return Candidate(self.text, self.prob)
+
+
+def main(argv):
+    trimodel = create_ngramlm(3, "shakespeare.txt")
+    for sentence in beam_search_text(trimodel, 10, 5, 1):
+        print(sentence.text)
 
     pass
 

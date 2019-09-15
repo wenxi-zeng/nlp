@@ -112,7 +112,6 @@ def mask_rare(corpus):
     for word, count in all_words.items():
         if count == 1:
             rare_words.add(word)
-    print("all: ", len(all_words), ", rare: ", len(rare_words))
 
     masked_corpus = []
     sentences = corpus.split()
@@ -165,7 +164,7 @@ class NGramLM:
         ngram_counter = self.ngram_counts.get(word_with_context, 0)
         context_counter = self.context_counts.get(context, 0)
         if context_counter == 0 or word not in self.vocabulary:
-            return self.vocabulary[UNKNOWN] / (len(self.vocabulary) * 1.0)
+            return 1 / (len(self.vocabulary) * 1.0)
         else:
             return ngram_counter / (context_counter * 1.0)
 
@@ -233,19 +232,28 @@ class NGramInterpolator:
 
 
 def main(argv):
-    model = create_ngramlm(3, r"C:\Users\wenxi\OneDrive\UTD\nlp\hw1\warpeace.txt")
-    # print(text_prob(model, "God has given it to me, let him who touches it beware!"))
-    print(text_prob(model, "Where is the prince, my Dauphin?", 1))
-    print(text_prob(model, "Where is the prince, my Dauphin?", 0.5))
-    print(text_prob(model, "Where is the prince, my Dauphin?", 0.25))
-    print(text_prob(model, "Where is the prince, my Dauphin?"))
+    model = create_ngramlm(3, "warpeace.txt")
 
-    inter = create_interpolator(3, [0.33, 0.33, 0.33], r"C:\Users\wenxi\OneDrive\UTD\nlp\hw1\warpeace.txt")
-    # print(text_prob(model, "God has given it to me, let him who touches it beware!"))
-    print(text_prob(inter, "Where is the prince, my Dauphin?", 1))
-    print(text_prob(inter, "Where is the prince, my Dauphin?", 0.5))
-    print(text_prob(inter, "Where is the prince, my Dauphin?", 0.25))
-    print(text_prob(inter, "Where is the prince, my Dauphin?"))
+    print("With Laplace smoothing:")
+    print("prob:", text_prob(model, "Where is the prince, my Dauphin?", 1), "delta:", 1,  "corpus: warpeace.txt",
+          "text: Where is the prince, my Dauphin?")
+    print("prob:", text_prob(model, "Where is the prince, my Dauphin?", 0.5), "delta:", 0.5,  "corpus: warpeace.txt",
+          "text: Where is the prince, my Dauphin?")
+    print("prob:", text_prob(model, "Where is the prince, my Dauphin?", 0.25), "delta:", 0.25,  "corpus: warpeace.txt",
+          "text: Where is the prince, my Dauphin?")
+    print("prob:", text_prob(model, "Where is the prince, my Dauphin?"), "delta:", 0,  "corpus: warpeace.txt",
+          "text: Where is the prince, my Dauphin?")
+
+    print("With interpolator [0.33, 0.33, 0.33]:")
+    inter = create_interpolator(3, [0.33, 0.33, 0.33], "warpeace.txt")
+    print("prob:", text_prob(inter, "Where is the prince, my Dauphin?", 1), "delta:", 1,  "corpus: warpeace.txt",
+          "text: Where is the prince, my Dauphin?")
+    print("prob:", text_prob(inter, "Where is the prince, my Dauphin?", 0.5), "delta:", 0.5,  "corpus: warpeace.txt",
+          "text: Where is the prince, my Dauphin?")
+    print("prob:", text_prob(inter, "Where is the prince, my Dauphin?", 0.25), "delta:", 0.25,  "corpus: warpeace.txt",
+          "text: Where is the prince, my Dauphin?")
+    print("prob:", text_prob(inter, "Where is the prince, my Dauphin?", 0), "delta:", 0,  "corpus: warpeace.txt",
+          "text: Where is the prince, my Dauphin?")
     pass
 
 

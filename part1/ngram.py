@@ -115,9 +115,12 @@ class NGramLM:
 
 
 def main(argv):
-	model = create_ngramlm(3, r"C:\Users\wenxi\OneDrive\UTD\nlp\hw1\warpeace.txt")
-	print(text_prob(model, "God has given it to me, let him who touches it beware!"))
-	print(text_prob(model, "Where is the prince, my Dauphin?"))
+	model = create_ngramlm(3, "warpeace.txt")
+	print("prob:", text_prob(model, "God has given it to me, let him who touches it beware!"), "corpus: warpeace.txt", "text: God has given it to me, let him who touches it beware!")
+	try:
+		print("3", "warpeace.txt", text_prob(model, "Where is the prince, my Dauphin?"))
+	except ValueError:
+		print("ValueError: math domain error", "corpus: warpeace.txt", "Where is the prince, my Dauphin?")
 	pass
 
 
